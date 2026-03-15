@@ -45,6 +45,38 @@ jobs:
           channelId: live
           projectId: ${{ vars.FIREBASE_PROJECT_ID }}
 
+      - name: Generate QR code links
+        run: |
+          BASE_URL="https://${{ vars.FIREBASE_PROJECT_ID }}.web.app"
+          ROUTES='${{ vars.ROUTES_JSON }}'
+
+          {
+            echo "## Deployment Complete"
+            echo ""
+            echo "**Live site:** ${BASE_URL}"
+            echo ""
+            echo "## QR Code Links"
+            echo ""
+            echo "Copy any link below into your QR code design app."
+            echo ""
+            echo "| Route | URL |"
+            echo "|-------|-----|"
+
+            echo "$ROUTES" | python3 -c "
+          import sys, json
+          base = '${BASE_URL}'
+          routes = json.load(sys.stdin)
+          for key, dest in routes.items():
+              r_param = '' if key == 'default' else 'r={}&'.format(key)
+              url = '{}/?{}utm_source=qr&utm_medium=qr&utm_campaign={}'.format(base, r_param, key)
+              print('| {} | \`{}\` |'.format(key, url))
+          "
+
+            echo ""
+            echo "---"
+            echo "*Each link includes UTM parameters for GA4 campaign tracking.*"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   deploy-preview:
     name: Preview (PRs)
     if: github.event_name == 'pull_request'
