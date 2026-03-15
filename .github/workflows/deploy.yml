@@ -46,23 +46,28 @@ jobs:
           projectId: ${{ vars.FIREBASE_PROJECT_ID }}
 
       - name: Generate QR code links
-        env:
-          BASE_URL: "https://${{ vars.FIREBASE_PROJECT_ID }}.web.app"
-          ROUTES: ${{ vars.ROUTES_JSON }}
         run: |
-          # Write routes to a temp file to avoid shell expansion issues
-          echo "$ROUTES" > /tmp/routes.json
+          BASE_URL="https://${{ vars.FIREBASE_PROJECT_ID }}.web.app"
 
-          # Generate summary using a standalone Python script
-          python3 - "$BASE_URL" /tmp/routes.json "$GITHUB_STEP_SUMMARY" << 'PYEOF'
-          import sys, json
+          # Extract routes JSON from the already-injected index.html
+          # The line looks like: ROUTES: {"default":"https://..."}
+          python3 - "$BASE_URL" public/index.html "$GITHUB_STEP_SUMMARY" << 'PYEOF'
+          import sys, json, re
 
           base_url = sys.argv[1]
-          routes_file = sys.argv[2]
+          html_file = sys.argv[2]
           summary_file = sys.argv[3]
 
-          with open(routes_file) as f:
-              routes = json.load(f)
+          with open(html_file) as f:
+              html = f.read()
+
+          # Find the ROUTES object in the injected HTML
+          match = re.search(r'ROUTES:\s*(\{[^}]+\})', html)
+          if not match:
+              print("WARNING: Could not find ROUTES in index.html")
+              sys.exit(0)
+
+          routes = json.loads(match.group(1))
 
           lines = []
           lines.append("## Deployment Complete\n")
