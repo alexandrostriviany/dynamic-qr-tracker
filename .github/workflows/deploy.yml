@@ -28,14 +28,15 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Inject config from environment
+        env:
+          GA4_ID: ${{ secrets.GA4_MEASUREMENT_ID }}
+          DEFAULT_URL: ${{ vars.DEFAULT_URL }}
+          ROUTES_JSON: ${{ vars.ROUTES_JSON }}
+          PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
         run: |
-          # Replace placeholders in index.html
-          sed -i "s|__GA4_MEASUREMENT_ID__|${{ secrets.GA4_MEASUREMENT_ID }}|g" public/index.html
-          sed -i "s|__DEFAULT_URL__|${{ vars.DEFAULT_URL }}|g" public/index.html
-          sed -i "s|__ROUTES_JSON__|${{ vars.ROUTES_JSON }}|g" public/index.html
-
-          # Replace placeholder in .firebaserc
-          sed -i "s|__FIREBASE_PROJECT_ID__|${{ vars.FIREBASE_PROJECT_ID }}|g" .firebaserc
+          python3 scripts/inject-config.py public/index.html \
+            "$GA4_ID" "$DEFAULT_URL" "$ROUTES_JSON"
+          sed -i "s|__FIREBASE_PROJECT_ID__|${PROJECT_ID}|g" .firebaserc
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0.10.0
@@ -60,11 +61,15 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Inject config from environment
+        env:
+          GA4_ID: ${{ secrets.GA4_MEASUREMENT_ID }}
+          DEFAULT_URL: ${{ vars.DEFAULT_URL }}
+          ROUTES_JSON: ${{ vars.ROUTES_JSON }}
+          PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
         run: |
-          sed -i "s|__GA4_MEASUREMENT_ID__|${{ secrets.GA4_MEASUREMENT_ID }}|g" public/index.html
-          sed -i "s|__DEFAULT_URL__|${{ vars.DEFAULT_URL }}|g" public/index.html
-          sed -i "s|__ROUTES_JSON__|${{ vars.ROUTES_JSON }}|g" public/index.html
-          sed -i "s|__FIREBASE_PROJECT_ID__|${{ vars.FIREBASE_PROJECT_ID }}|g" .firebaserc
+          python3 scripts/inject-config.py public/index.html \
+            "$GA4_ID" "$DEFAULT_URL" "$ROUTES_JSON"
+          sed -i "s|__FIREBASE_PROJECT_ID__|${PROJECT_ID}|g" .firebaserc
 
       - name: Deploy preview channel
         uses: FirebaseExtended/action-hosting-deploy@v0.10.0
