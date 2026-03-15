@@ -207,6 +207,48 @@ Your QR codes would then use `https://go.yourbrand.com/?r=menu&utm_source=...`
 - **GDPR (EU users)**: You should add a cookie consent banner if your audience is in the EU
 - **No server-side routing**: All routes are defined in the client-side JavaScript. For dynamic server-side routing, you would need Firebase Cloud Functions (adds complexity)
 
+## Agent Setup Prompt
+
+Use this prompt with Claude Code (or any coding agent) to set up the project from scratch. Copy-paste it, replacing the placeholder values with your own.
+
+```
+Set up the dynamic-qr-tracker project in this repo. Here is what I need:
+
+1. Install Firebase CLI: npm install -g firebase-tools
+2. I will run `firebase login` myself in the terminal (it needs a browser).
+3. Create a Firebase project:
+   firebase projects:create <PROJECT_ID> --display-name "<DISPLAY_NAME>"
+4. GA4 Measurement ID: I will provide it after creating a GA4 property manually
+   at https://analytics.google.com/ (Admin > Create > Property > Web stream).
+5. Set GitHub secrets and variables using `gh`:
+   - gh secret set GA4_MEASUREMENT_ID --body "<GA4_ID>"
+   - gh variable set FIREBASE_PROJECT_ID --body "<PROJECT_ID>"
+   - gh variable set DEFAULT_URL --body "<REDIRECT_URL>"
+   - gh variable set ROUTES_JSON --body '{"default":"<REDIRECT_URL>"}'
+6. For FIREBASE_SERVICE_ACCOUNT: I will download the key from Firebase Console
+   (Project Settings > Service accounts > Generate new private key) and then run:
+   gh secret set FIREBASE_SERVICE_ACCOUNT < ~/Downloads/<key-file>.json
+7. Deploy to Firebase Hosting:
+   - Copy public/index.html and .firebaserc to temp files
+   - Replace __GA4_MEASUREMENT_ID__, __DEFAULT_URL__, __ROUTES_JSON__,
+     __FIREBASE_PROJECT_ID__ placeholders with real values using sed
+   - Run: firebase deploy --only hosting
+   - Restore the original template files from the temp copies
+
+My values:
+- PROJECT_ID: ___
+- DISPLAY_NAME: ___
+- GA4_MEASUREMENT_ID: ___
+- DEFAULT_URL: ___
+- ROUTES_JSON: ___
+
+The two manual steps I will handle myself:
+- firebase login (needs browser)
+- Downloading the Firebase service account key (needs browser)
+
+Do everything else for me.
+```
+
 ## Useful Commands
 
 ```bash
