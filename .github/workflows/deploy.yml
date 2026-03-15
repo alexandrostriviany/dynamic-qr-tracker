@@ -46,37 +46,45 @@ jobs:
           projectId: ${{ vars.FIREBASE_PROJECT_ID }}
 
       - name: Generate QR code links
+        env:
+          BASE_URL: "https://${{ vars.FIREBASE_PROJECT_ID }}.web.app"
+          ROUTES: ${{ vars.ROUTES_JSON }}
         run: |
-          BASE_URL="https://${{ vars.FIREBASE_PROJECT_ID }}.web.app"
+          # Write routes to a temp file to avoid shell expansion issues
+          echo "$ROUTES" > /tmp/routes.json
 
-          # Extract routes from the already-injected index.html
-          ROUTES=$(grep -oP 'ROUTES: \K\{[^}]+\}' public/index.html)
+          # Generate summary using a standalone Python script
+          python3 - "$BASE_URL" /tmp/routes.json "$GITHUB_STEP_SUMMARY" << 'PYEOF'
+          import sys, json
 
-          {
-            echo "## Deployment Complete"
-            echo ""
-            echo "**Live site:** ${BASE_URL}"
-            echo ""
-            echo "## QR Code Links"
-            echo ""
-            echo "Copy any link below into your QR code design app."
-            echo ""
-            echo "| Route | URL |"
-            echo "|-------|-----|"
+          base_url = sys.argv[1]
+          routes_file = sys.argv[2]
+          summary_file = sys.argv[3]
 
-            echo "$ROUTES" | jq -r --arg base "$BASE_URL" '
-              to_entries[] |
-              if .key == "default" then
-                "| \(.key) | `\($base)/?utm_source=qr&utm_medium=qr&utm_campaign=\(.key)` |"
-              else
-                "| \(.key) | `\($base)/?r=\(.key)&utm_source=qr&utm_medium=qr&utm_campaign=\(.key)` |"
-              end
-            '
+          with open(routes_file) as f:
+              routes = json.load(f)
 
-            echo ""
-            echo "---"
-            echo "*Each link includes UTM parameters for GA4 campaign tracking.*"
-          } >> "$GITHUB_STEP_SUMMARY"
+          lines = []
+          lines.append("## Deployment Complete\n")
+          lines.append(f"**Live site:** {base_url}\n")
+          lines.append("## QR Code Links\n")
+          lines.append("Copy any link below into your QR code design app.\n")
+          lines.append("| Route | URL |")
+          lines.append("|-------|-----|")
+
+          for key in routes:
+              if key == "default":
+                  url = f"{base_url}/?utm_source=qr&utm_medium=qr&utm_campaign={key}"
+              else:
+                  url = f"{base_url}/?r={key}&utm_source=qr&utm_medium=qr&utm_campaign={key}"
+              lines.append(f"| {key} | `{url}` |")
+
+          lines.append("\n---")
+          lines.append("*Each link includes UTM parameters for GA4 campaign tracking.*")
+
+          with open(summary_file, "a") as f:
+              f.write("\n".join(lines) + "\n")
+          PYEOF
 
   deploy-preview:
     name: Preview (PRs)
