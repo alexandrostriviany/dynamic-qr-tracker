@@ -1,0 +1,17 @@
+{
+  "ga4_measurement_id": "G-XXXXXXXXXX",
+  "routes": {
+    "default": {
+      "destination": "https://example.com",
+      "label": "Default landing page"
+    },
+    "menu": {
+      "destination": "https://example.com/menu",
+      "label": "Restaurant menu"
+    },
+    "promo": {
+      "destination": "https://example.com/promo",
+      "label": "Spring 2025 promo"
+    }
+  }
+}
