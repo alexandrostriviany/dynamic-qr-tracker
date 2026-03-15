@@ -17,6 +17,9 @@ on:
 #   ROUTES_JSON               - JSON object mapping route keys to URLs, e.g.:
 #                               {"default":"https://example.com","menu":"https://example.com/menu"}
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   deploy:
     name: Deploy
@@ -35,7 +38,7 @@ jobs:
           sed -i "s|__FIREBASE_PROJECT_ID__|${{ vars.FIREBASE_PROJECT_ID }}|g" .firebaserc
 
       - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
+        uses: FirebaseExtended/action-hosting-deploy@v0.10.0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -57,7 +60,7 @@ jobs:
           sed -i "s|__FIREBASE_PROJECT_ID__|${{ vars.FIREBASE_PROJECT_ID }}|g" .firebaserc
 
       - name: Deploy preview channel
-        uses: FirebaseExtended/action-hosting-deploy@v0
+        uses: FirebaseExtended/action-hosting-deploy@v0.10.0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
