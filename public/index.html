@@ -34,27 +34,21 @@
   </style>
 
   <!-- Google Analytics 4 -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=__GA4_MEASUREMENT_ID__"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', 'GA_MEASUREMENT_ID', { send_page_view: false });
+    gtag('config', '__GA4_MEASUREMENT_ID__', { send_page_view: false });
   </script>
 
   <script>
-    // ========================================================
-    // CONFIGURATION - Edit these values
-    // ========================================================
+    // Configuration is injected during deploy via environment variables.
+    // See .github/workflows/deploy.yml for details.
     var CONFIG = {
-      GA_ID: 'GA_MEASUREMENT_ID',        // Replace with your G-XXXXXXXXXX
-      DEFAULT_URL: 'https://example.com', // Fallback destination
-      // Route map: ?r=KEY redirects to the URL
-      ROUTES: {
-        'default': 'https://example.com',
-        'menu':    'https://example.com/menu',
-        'promo':   'https://example.com/promo'
-      }
+      GA_ID: '__GA4_MEASUREMENT_ID__',
+      DEFAULT_URL: '__DEFAULT_URL__',
+      ROUTES: __ROUTES_JSON__
     };
 
     // ========================================================
@@ -104,7 +98,7 @@
     <div class="spinner"></div>
     <p>Redirecting...</p>
     <noscript>
-      <p><a href="https://example.com">Click here</a> if you are not redirected.</p>
+      <p><a href="__DEFAULT_URL__">Click here</a> if you are not redirected.</p>
     </noscript>
   </div>
 </body>

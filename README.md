@@ -2,7 +2,7 @@
 
 Free dynamic QR codes with full scan statistics using Firebase Hosting + Google Analytics 4.
 
-**How it works:** QR code points to a Firebase-hosted redirect page. The page fires a GA4 tracking event (capturing location, device, time, campaign), then redirects the user to the final destination. Change the destination anytime by editing the config and redeploying — the QR code itself never changes.
+**How it works:** QR code points to a Firebase-hosted redirect page. The page fires a GA4 tracking event (capturing location, device, time, campaign), then redirects the user to the final destination. Change the destination anytime by updating an env variable and redeploying — the QR code itself never changes.
 
 **Cost:** $0/month for up to ~5 million scans/month.
 
@@ -13,12 +13,29 @@ dynamic-qr-tracker/
   .github/workflows/
     deploy.yml       # Auto-deploy to Firebase on push to main
   public/
-    index.html       # Redirect page with GA4 tracking
+    index.html       # Redirect page template (placeholders injected at deploy)
     404.html         # Fallback for unknown routes
-  config.json        # Route definitions (reference only)
+  .env.example       # Template for local environment variables
+  .firebaserc        # Firebase project ID (placeholder, injected at deploy)
   firebase.json      # Firebase Hosting config
-  .firebaserc        # Firebase project ID
-  deploy.sh          # One-command deploy (local)
+  deploy.sh          # One-command local deploy
+```
+
+## Configuration
+
+All config is managed via environment variables — nothing is hardcoded in the codebase.
+
+| Variable | Where | Description |
+|----------|-------|-------------|
+| `FIREBASE_PROJECT_ID` | GitHub variable / `.env` | Firebase project ID |
+| `GA4_MEASUREMENT_ID` | GitHub secret / `.env` | GA4 Measurement ID (`G-XXXXXXXXXX`) |
+| `DEFAULT_URL` | GitHub variable / `.env` | Fallback redirect destination |
+| `ROUTES_JSON` | GitHub variable / `.env` | JSON object mapping route keys to URLs |
+| `FIREBASE_SERVICE_ACCOUNT` | GitHub secret | Firebase service account JSON key (CI only) |
+
+**`ROUTES_JSON` format:**
+```json
+{"default":"https://example.com","menu":"https://example.com/menu","promo":"https://example.com/promo"}
 ```
 
 ## Prerequisites
@@ -29,6 +46,7 @@ dynamic-qr-tracker/
    ```bash
    npm install -g firebase-tools
    ```
+
 ## Setup Guide
 
 ### Step 1: Create a Firebase project
@@ -38,6 +56,12 @@ dynamic-qr-tracker/
 3. Name it (e.g., `my-qr-tracker`)
 4. Disable Google Analytics for the Firebase project (we'll use GA4 separately for more control)
 5. Click **Create**
+
+Or via CLI:
+```bash
+firebase login
+firebase projects:create my-qr-tracker --display-name "My QR Tracker"
+```
 
 ### Step 2: Create a GA4 property
 
@@ -49,61 +73,47 @@ dynamic-qr-tracker/
 6. Enter your Firebase Hosting URL as the website (e.g., `my-qr-tracker.web.app`)
 7. Copy the **Measurement ID** — it looks like `G-XXXXXXXXXX`
 
-### Step 3: Configure the project
+### Step 3: Configure environment
 
-1. **Set your Firebase project ID** in `.firebaserc`:
-   ```json
-   {
-     "projects": {
-       "default": "my-qr-tracker"
-     }
-   }
-   ```
-
-2. **Set your GA4 Measurement ID and routes** in `public/index.html`:
-
-   Find the `CONFIG` object near the top and edit it:
-   ```javascript
-   var CONFIG = {
-     GA_ID: 'G-XXXXXXXXXX',                  // Your GA4 Measurement ID
-     DEFAULT_URL: 'https://your-site.com',    // Fallback destination
-     ROUTES: {
-       'default': 'https://your-site.com',
-       'menu':    'https://your-site.com/menu',
-       'promo':   'https://your-site.com/spring-sale'
-     }
-   };
-   ```
-
-   Also replace the two occurrences of `GA_MEASUREMENT_ID` in the `<script>` tags at the top:
-   ```html
-   <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-   ...
-   gtag('config', 'G-XXXXXXXXXX', { send_page_view: false });
-   ```
-
-### Step 4: Login and deploy
-
+**For local deploys:**
 ```bash
-# Login to Firebase (one-time)
-firebase login
-
-# Deploy
-./deploy.sh
-# or: firebase deploy --only hosting
+cp .env.example .env
+# Edit .env with your values
 ```
 
-Your site is now live at `https://my-qr-tracker.web.app`.
+**For GitHub Actions (CI):**
+
+Go to repo > Settings > Secrets and variables > Actions:
+
+**Secrets:**
+- `FIREBASE_SERVICE_ACCOUNT` — Firebase Console > Project Settings > Service accounts > Generate new private key (paste entire JSON)
+- `GA4_MEASUREMENT_ID` — your `G-XXXXXXXXXX` from Step 2
+
+**Variables:**
+- `FIREBASE_PROJECT_ID` — your project ID (e.g., `my-qr-tracker`)
+- `DEFAULT_URL` — fallback redirect URL (e.g., `https://example.com`)
+- `ROUTES_JSON` — route mapping, e.g.: `{"default":"https://example.com","menu":"https://example.com/menu"}`
+
+### Step 4: Deploy
+
+**Locally:**
+```bash
+./deploy.sh
+```
+
+**Via CI:** push to `main` — GitHub Actions deploys automatically.
+
+Your site is now live at `https://<project-id>.web.app`.
 
 ### Step 5: Create QR codes
 
-Use any QR code generator app with these URLs:
+Use any QR code design app with these URLs:
 
 | Route | URL to encode |
 |-------|------------|
-| Default | `https://my-qr-tracker.web.app/?utm_source=flyer&utm_medium=qr&utm_campaign=default` |
-| Menu | `https://my-qr-tracker.web.app/?r=menu&utm_source=poster&utm_medium=qr&utm_campaign=menu` |
-| Promo | `https://my-qr-tracker.web.app/?r=promo&utm_source=email&utm_medium=qr&utm_campaign=promo` |
+| Default | `https://<project-id>.web.app/?utm_source=flyer&utm_medium=qr&utm_campaign=default` |
+| Menu | `https://<project-id>.web.app/?r=menu&utm_source=poster&utm_medium=qr&utm_campaign=menu` |
+| Promo | `https://<project-id>.web.app/?r=promo&utm_source=email&utm_medium=qr&utm_campaign=promo` |
 
 Paste the URL into your preferred QR design tool to generate the image.
 
@@ -111,9 +121,9 @@ Paste the URL into your preferred QR design tool to generate the image.
 
 The redirect page reads the `?r=` query parameter to pick the destination:
 
-- `?r=menu` → looks up `CONFIG.ROUTES['menu']` → redirects to that URL
-- `?r=promo` → looks up `CONFIG.ROUTES['promo']` → redirects to that URL
-- No `?r=` or unknown key → redirects to `CONFIG.DEFAULT_URL`
+- `?r=menu` — looks up `ROUTES['menu']` — redirects to that URL
+- `?r=promo` — looks up `ROUTES['promo']` — redirects to that URL
+- No `?r=` or unknown key — redirects to `DEFAULT_URL`
 
 **UTM parameters** (`utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content`) are captured by GA4 for campaign attribution. They do NOT affect the redirect destination.
 
@@ -121,8 +131,8 @@ The redirect page reads the `?r=` query parameter to pick the destination:
 
 This is the "dynamic" part. To change where a QR code points:
 
-1. Edit `CONFIG.ROUTES` in `public/index.html`
-2. Run `firebase deploy --only hosting`
+1. Update `ROUTES_JSON` (in `.env` or GitHub variable)
+2. Redeploy (`./deploy.sh` or push to `main`)
 
 The QR code image stays the same. The redirect destination changes instantly.
 
@@ -159,28 +169,14 @@ The QR code image stays the same. The redirect destination changes instantly.
 | Which QR code (route) | From `route_key` custom parameter |
 | New vs returning | Auto (cookie-based) |
 
-## CI/CD (GitHub Actions)
-
-**`.github/workflows/deploy.yml`** auto-deploys to Firebase Hosting when you push changes to `main` (only triggers when `public/`, `firebase.json`, or `.firebaserc` change). PRs get a temporary preview URL.
-
-**Setup:**
-
-1. In Firebase Console > Project Settings > **Service accounts** > **Generate new private key**
-2. In your GitHub repo > Settings > Secrets and variables > Actions:
-   - Add secret: `FIREBASE_SERVICE_ACCOUNT` — paste the entire JSON key file contents
-   - Add variable: `FIREBASE_PROJECT_ID` — your project ID (e.g., `my-qr-tracker`)
-
-That's it. Every push to `main` auto-deploys.
-
 ## Preview Before Going Live
 
 Firebase supports preview channels for testing without affecting production:
 
 ```bash
-# Deploy to a temporary preview URL
 firebase hosting:channel:deploy preview
 
-# This gives you a URL like:
+# Gives you a URL like:
 # https://my-qr-tracker--preview-xxxxxxx.web.app
 ```
 
@@ -217,8 +213,8 @@ Your QR codes would then use `https://go.yourbrand.com/?r=menu&utm_source=...`
 # Login
 firebase login
 
-# Deploy to production
-firebase deploy --only hosting
+# Deploy locally
+./deploy.sh
 
 # Deploy to preview channel
 firebase hosting:channel:deploy preview

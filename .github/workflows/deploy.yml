@@ -3,11 +3,19 @@ name: Deploy to Firebase Hosting
 on:
   push:
     branches: [main]
-    paths:
-      - 'public/**'
-      - 'firebase.json'
-      - '.firebaserc'
   workflow_dispatch:
+
+# Environment variables to configure:
+#
+# Secrets (repo > Settings > Secrets):
+#   FIREBASE_SERVICE_ACCOUNT  - Firebase service account JSON key
+#   GA4_MEASUREMENT_ID        - Google Analytics 4 Measurement ID (G-XXXXXXXXXX)
+#
+# Variables (repo > Settings > Variables):
+#   FIREBASE_PROJECT_ID       - Firebase project ID
+#   DEFAULT_URL               - Fallback redirect destination
+#   ROUTES_JSON               - JSON object mapping route keys to URLs, e.g.:
+#                               {"default":"https://example.com","menu":"https://example.com/menu"}
 
 jobs:
   deploy:
@@ -15,6 +23,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Inject config from environment
+        run: |
+          # Replace placeholders in index.html
+          sed -i "s|__GA4_MEASUREMENT_ID__|${{ secrets.GA4_MEASUREMENT_ID }}|g" public/index.html
+          sed -i "s|__DEFAULT_URL__|${{ vars.DEFAULT_URL }}|g" public/index.html
+          sed -i "s|__ROUTES_JSON__|${{ vars.ROUTES_JSON }}|g" public/index.html
+
+          # Replace placeholder in .firebaserc
+          sed -i "s|__FIREBASE_PROJECT_ID__|${{ vars.FIREBASE_PROJECT_ID }}|g" .firebaserc
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -31,10 +49,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Inject config from environment
+        run: |
+          sed -i "s|__GA4_MEASUREMENT_ID__|${{ secrets.GA4_MEASUREMENT_ID }}|g" public/index.html
+          sed -i "s|__DEFAULT_URL__|${{ vars.DEFAULT_URL }}|g" public/index.html
+          sed -i "s|__ROUTES_JSON__|${{ vars.ROUTES_JSON }}|g" public/index.html
+          sed -i "s|__FIREBASE_PROJECT_ID__|${{ vars.FIREBASE_PROJECT_ID }}|g" .firebaserc
+
       - name: Deploy preview channel
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: ${{ vars.FIREBASE_PROJECT_ID }}
-          # No channelId = creates a temporary preview URL
